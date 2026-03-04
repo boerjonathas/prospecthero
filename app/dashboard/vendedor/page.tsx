@@ -9,7 +9,9 @@ import {
     Flame,
     TrendingUp,
     Clock,
-    Download
+    Download,
+    BarChart3,
+    PieChart,
 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -40,6 +42,7 @@ interface DashData {
         profile: any;
     };
     reasons: any[];
+    funnelData: any[];
 }
 
 export default function VendedorDashboard() {
@@ -67,16 +70,44 @@ export default function VendedorDashboard() {
     const handleExport = () => {
         if (!data) return;
 
-        const { metrics, reasons = [] } = data;
+        const { metrics } = data;
         let csv = 'Metrica,Valor\n';
         csv += `Prospects Hoje,${metrics.day}\n`;
         csv += `Prospects Semana,${metrics.week}\n`;
         csv += `Pontos Totais,${metrics.profile?.pontos || 0}\n`;
         csv += `Nivel,${metrics.profile?.nivel || 1}\n`;
 
-        csv += '\nProspect,Status,Motivo\n';
-        reasons.forEach((r: any) => {
-            csv += `"${r.nome}","${r.status}","${r.motivos_resultado?.descricao || ''}"\n`;
+        csv += '\nFunil de Vendas,Quantidade\n';
+        const funnelLabels = ['novo', 'contatado', 'interessado', 'convertido'];
+        funnelLabels.forEach(label => {
+            const item = data.funnelData?.find((f: any) => f.status === label);
+            csv += `${label.toUpperCase()},${item ? item.count : 0}\n`;
+        });
+
+        csv += '\nMotivo de Perda,Leads\n';
+        const lossCounts: any = data.reasons
+            .filter((r: any) => r.motivos_resultado?.tipo === 'perda')
+            .reduce((acc: any, curr: any) => {
+                const desc = curr.motivos_resultado?.descricao || 'Não informado';
+                acc[desc] = (acc[desc] || 0) + 1;
+                return acc;
+            }, {});
+
+        Object.entries(lossCounts).forEach(([reason, count]) => {
+            csv += `"${reason}",${count}\n`;
+        });
+
+        csv += '\nMotivo de Sucesso (Por que compraram?),Leads\n';
+        const successCounts: any = data.reasons
+            .filter((r: any) => r.motivos_resultado?.tipo === 'conversao')
+            .reduce((acc: any, curr: any) => {
+                const desc = curr.motivos_resultado?.descricao || 'Não informado';
+                acc[desc] = (acc[desc] || 0) + 1;
+                return acc;
+            }, {});
+
+        Object.entries(successCounts).forEach(([reason, count]) => {
+            csv += `"${reason}",${count}\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -99,18 +130,78 @@ export default function VendedorDashboard() {
     const { metrics, reasons = [] } = data;
     const profile = metrics.profile;
 
-    // Processar dados para o gráfico de motivos
-    const safeReasons = Array.isArray(reasons) ? reasons : [];
-    const lossReasons = safeReasons.filter(r => r.motivos_resultado?.tipo === 'perda');
-    const conversionReasons = safeReasons.filter(r => r.motivos_resultado?.tipo === 'conversao');
+    // Funil
+    const funnelLabelsForChart = ['novo', 'contatado', 'interessado', 'convertido'];
+    const funnelValues = funnelLabelsForChart.map(label => {
+        const item = data.funnelData?.find((f: any) => f.status === label);
+        return item ? parseInt(item.count) : 0;
+    });
 
-    const chartData = {
-        labels: ['Perda', 'Conversão'],
+    const funnelChartData = {
+        labels: funnelLabelsForChart.map(l => l.toUpperCase()),
         datasets: [
             {
-                data: [lossReasons.length, conversionReasons.length],
-                backgroundColor: ['#ef4444', '#22c55e'],
+                label: 'Seus Leads no Funil',
+                data: funnelValues,
+                backgroundColor: ['#94a3b8', '#38bdf8', '#818cf8', '#22c55e'],
+                borderRadius: 8,
+            },
+        ],
+    };
+
+    // Processar motivos de perda (Top 3)
+    const lossCounts: any = data.reasons
+        .filter((r: any) => r.motivos_resultado?.tipo === 'perda')
+        .reduce((acc: any, curr: any) => {
+            const desc = curr.motivos_resultado?.descricao || 'Não informado';
+            acc[desc] = (acc[desc] || 0) + 1;
+            return acc;
+        }, {});
+
+    const sortedLoss = Object.entries(lossCounts)
+        .sort((a: any, b: any) => b[1] - a[1]);
+
+    const top3Loss = sortedLoss.slice(0, 3);
+    const othersLoss = sortedLoss.slice(3).reduce((acc: number, curr: any) => acc + curr[1], 0);
+
+    const lossLabels = top3Loss.map(([label]) => label);
+    const lossValues = top3Loss.map(([_, value]) => value);
+    if (othersLoss > 0) {
+        lossLabels.push('Outros');
+        lossValues.push(othersLoss);
+    }
+
+    const lossChartData = {
+        labels: lossLabels,
+        datasets: [
+            {
+                data: lossValues,
+                backgroundColor: ['#f43f5e', '#fb923c', '#fbbf24', '#94a3b8'],
                 borderWidth: 0,
+            },
+        ],
+    };
+
+    // Processar motivos de sucesso
+    const succCounts: any = data.reasons
+        .filter((r: any) => r.motivos_resultado?.tipo === 'conversao')
+        .reduce((acc: any, curr: any) => {
+            const desc = curr.motivos_resultado?.descricao || 'Não informado';
+            acc[desc] = (acc[desc] || 0) + 1;
+            return acc;
+        }, {});
+
+    const sortedSuccess = Object.entries(succCounts)
+        .sort((a: any, b: any) => b[1] - a[1]);
+
+    const successChartData = {
+        labels: sortedSuccess.map(([label]) => label),
+        datasets: [
+            {
+                label: 'Seus Fechamentos',
+                data: sortedSuccess.map(([_, value]) => value),
+                backgroundColor: '#22c55e',
+                borderRadius: 8,
             },
         ],
     };
@@ -173,32 +264,94 @@ export default function VendedorDashboard() {
                     />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Gráfico de Conversão */}
-                    <div className="glass p-6 rounded-3xl lg:col-span-1">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <TrendingUp className="text-purple-600" /> Conversão vs Perda
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Funil do Vendedor */}
+                    <div className="glass p-8 rounded-3xl">
+                        <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+                            <BarChart3 className="text-purple-600" /> Seu Funil de Vendas
                         </h3>
-                        <div className="h-64 flex items-center justify-center">
-                            <Pie data={chartData} options={{ maintainAspectRatio: false }} />
+                        <div className="h-80">
+                            <Bar
+                                data={funnelChartData}
+                                options={{
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { display: false } },
+                                    scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
+                                }}
+                            />
                         </div>
                     </div>
 
-                    {/* Ranking Rápido ou Motivacional */}
-                    <div className="glass p-6 rounded-3xl lg:col-span-2 card-gradient">
-                        <h3 className="text-xl font-bold mb-4">Dica do Especialista 💡</h3>
-                        <p className="text-slate-700 leading-relaxed mb-4">
-                            "Foque em entender a dor do cliente nos primeiros 30 segundos. Leads que demonstram interesse na primeira abordagem têm 40% mais chance de conversão."
+                    {/* Motivos de Perda */}
+                    <div className="glass p-8 rounded-3xl card-gradient">
+                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                            <PieChart className="text-pink-600" /> Seus Principais Motivos de Perda
+                        </h3>
+                        <div className="h-72 flex items-center justify-center">
+                            {lossValues.length > 0 ? (
+                                <Pie
+                                    data={lossChartData}
+                                    options={{
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                position: 'bottom',
+                                                labels: {
+                                                    font: { weight: 'bold' as any, family: 'Inter' },
+                                                    padding: 20
+                                                }
+                                            }
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <p className="text-slate-400 italic">Sem registros de perda no momento.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Motivos de Sucesso */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="glass p-8 rounded-3xl lg:col-span-2">
+                        <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+                            <BarChart3 className="text-green-600" /> Por que você está vendendo? (Sucesso)
+                        </h3>
+                        <div className="h-64">
+                            {sortedSuccess.length > 0 ? (
+                                <Bar
+                                    data={successChartData}
+                                    options={{
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { display: false } },
+                                        scales: {
+                                            y: { beginAtZero: true, grid: { display: false } },
+                                            x: { grid: { display: false } }
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-slate-400 italic">
+                                    Nenhuma conversão registrada ainda.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="glass p-8 rounded-3xl lg:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 border-none shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4 text-white">Dica do Time 💡</h3>
+                        <p className="text-slate-300 leading-relaxed mb-6">
+                            "Leads que recebem contato em menos de 5 minutos têm <span className="text-purple-400 font-bold">9x mais chance</span> de avançar no funil."
                         </p>
-                        <div className="flex gap-4">
-                            <div className="p-4 bg-white/50 rounded-2xl border border-white/50 flex-1">
-                                <p className="text-sm font-bold text-slate-500 mb-1">Total Prospectado</p>
-                                <p className="text-3xl font-black text-slate-800">{reasons.length}</p>
+                        <div className="space-y-4">
+                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                <p className="text-sm font-bold text-slate-400 mb-1 leading-none">Total Seu</p>
+                                <p className="text-3xl font-black text-white">{data.reasons.length}</p>
                             </div>
-                            <div className="p-4 bg-white/50 rounded-2xl border border-white/50 flex-1">
-                                <p className="text-sm font-bold text-slate-500 mb-1">Taxa de Sucesso</p>
-                                <p className="text-3xl font-black text-slate-800">
-                                    {reasons.length > 0 ? ((conversionReasons.length / reasons.length) * 100).toFixed(0) : 0}%
+                            <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                <p className="text-sm font-bold text-slate-400 mb-1 leading-none">Taxa de Conversão</p>
+                                <p className="text-3xl font-black text-green-400">
+                                    {data.reasons.length > 0 ? ((sortedSuccess.reduce((acc: number, curr: any) => acc + curr[1], 0) / data.reasons.length) * 100).toFixed(1) : 0}%
                                 </p>
                             </div>
                         </div>

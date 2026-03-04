@@ -37,6 +37,9 @@ export async function GET(request: Request) {
         .eq('vendedor_id', user.id)
         .not('motivo_resultado_id', 'is', null);
 
+    // Funil do vendedor
+    const { data: funnelData } = await supabase.rpc('get_vendedor_funnel_stats', { vendedor_uuid: user.id });
+
     const profileData = profile || {
         id: user.id,
         nome: user.user_metadata?.nome || 'Herói',
@@ -55,5 +58,6 @@ export async function GET(request: Request) {
             profile: profileData,
         },
         reasons: reasons || [],
+        funnelData: funnelData || [],
     });
 }
