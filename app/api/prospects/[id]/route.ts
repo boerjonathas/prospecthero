@@ -14,7 +14,10 @@ export async function PUT(
 
     const { id } = params;
     const body = await request.json();
-    const { status, motivo_resultado_id } = body;
+    const {
+        nome, email, telefone, cidade, sexo, status,
+        motivo_resultado_id, observacao_resultado
+    } = body;
 
     const { data: oldProspect, error: fetchError } = await supabase
         .from('prospects')
@@ -26,9 +29,19 @@ export async function PUT(
         return NextResponse.json({ error: 'Prospect not found' }, { status: 404 });
     }
 
+    const updateData: any = {
+        nome, email, telefone, cidade, sexo, status,
+        motivo_resultado_id: motivo_resultado_id === '' ? null : motivo_resultado_id,
+        observacao_resultado,
+        data_resultado: status === 'convertido' || status === 'nao_interessado' ? new Date().toISOString() : null
+    };
+
+    // Remover campos undefined para não sobrescrever com null se não enviados
+    Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
     const { data: updatedProspect, error } = await supabase
         .from('prospects')
-        .update({ ...body, data_resultado: status === 'convertido' || status === 'nao_interessado' ? new Date().toISOString() : null })
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();

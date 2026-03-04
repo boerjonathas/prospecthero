@@ -8,7 +8,8 @@ import {
     Zap,
     Flame,
     TrendingUp,
-    Clock
+    Clock,
+    Download
 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import {
@@ -63,6 +64,32 @@ export default function VendedorDashboard() {
             });
     }, []);
 
+    const handleExport = () => {
+        if (!data) return;
+
+        const { metrics, reasons = [] } = data;
+        let csv = 'Metrica,Valor\n';
+        csv += `Prospects Hoje,${metrics.day}\n`;
+        csv += `Prospects Semana,${metrics.week}\n`;
+        csv += `Pontos Totais,${metrics.profile?.pontos || 0}\n`;
+        csv += `Nivel,${metrics.profile?.nivel || 1}\n`;
+
+        csv += '\nProspect,Status,Motivo\n';
+        reasons.forEach((r: any) => {
+            csv += `"${r.nome}","${r.status}","${r.motivos_resultado?.descricao || ''}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `seu_relatorio_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (loading) return <AppLayout><div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div></AppLayout>;
 
     if (error) return <AppLayout><div className="p-10 text-center"><p className="text-red-500 font-bold">{error}</p></div></AppLayout>;
@@ -96,7 +123,13 @@ export default function VendedorDashboard() {
                         <h1 className="text-3xl font-black text-slate-800">Olá, {profile?.nome || 'Herói'}! 👋</h1>
                         <p className="text-slate-500 font-medium">Você está no nível {profile?.nivel || 1}. Continue assim!</p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center">
+                        <button
+                            onClick={handleExport}
+                            className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-slate-600 font-bold text-sm hover:bg-slate-50"
+                        >
+                            <Download size={18} /> Exportar
+                        </button>
                         <div className="glass px-6 py-2 rounded-2xl flex items-center gap-2">
                             <Zap className="text-yellow-500 fill-yellow-500" size={24} />
                             <span className="text-2xl font-black text-slate-800">{profile?.pontos || 0} Pts</span>

@@ -11,7 +11,11 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
         .from('prospects')
-        .select('*, vendedor:profiles!prospects_vendedor_id_fkey(nome)')
+        .select(`
+            *,
+            vendedor:profiles!prospects_vendedor_id_fkey(nome),
+            motivos_resultado:motivos_resultado(*)
+        `)
         .order('data_prospeccao', { ascending: false });
 
     if (error) {
@@ -30,6 +34,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+
+    // Saneamento básico
+    if (body.motivo_resultado_id === '') body.motivo_resultado_id = null;
+
     const { data: prospect, error } = await supabase
         .from('prospects')
         .insert([{ ...body, vendedor_id: user.id }])

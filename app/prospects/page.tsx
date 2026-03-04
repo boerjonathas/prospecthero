@@ -20,6 +20,9 @@ export default function ProspectsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentProspect, setCurrentProspect] = useState<any>(null);
     const [motivos, setMotivos] = useState<any[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     // Form states
     const [formData, setFormData] = useState({
@@ -40,22 +43,27 @@ export default function ProspectsPage() {
         setLoading(false);
     };
 
-    const fetchMotivos = async () => {
-        const { data: { user } } = await (await fetch('/api/prospects')).json(); // Just to get the fetch session
-        // Motivos are public-viewable via Supabase directly or another API
-        const res = await fetch('/api/relatorios/motivos'); // This is admin-locked, so let's use a simpler way or public motifs
-        // Actually, motives should be fetched from a public-ish endpoint.
-        // For now, I'll hardcode or fetch from a new endpoint.
-    };
+    const filteredProspects = prospects.filter(p => {
+        const search = searchTerm.toLowerCase();
+        return (
+            p.nome?.toLowerCase().includes(search) ||
+            p.telefone?.toLowerCase().includes(search) ||
+            p.cidade?.toLowerCase().includes(search)
+        );
+    });
 
     useEffect(() => {
         fetchData();
-        // Fetch motifs (simulated for now or fetched from a dedicated route if needed)
-        fetch('/api/relatorios/motivos').then(res => res.json()).then(d => setMotivos(d.data || []));
+        // Buscar a lista mestre de motivos
+        fetch('/api/motivos')
+            .then(res => res.json())
+            .then(d => setMotivos(d.data || []));
     }, []);
 
     const handleOpenModal = (prospect: any = null) => {
+        setSubmitError(null);
         if (prospect) {
+            if (!prospect.id) console.warn('Modal aberto para prospect sem ID:', prospect);
             setCurrentProspect(prospect);
             setFormData({
                 nome: prospect.nome,
@@ -64,7 +72,9 @@ export default function ProspectsPage() {
                 cidade: prospect.cidade || '',
                 sexo: prospect.sexo || 'M',
                 status: prospect.status,
-                motivo_resultado_id: prospect.motivo_resultado_id || '',
+                motivo_resultado_id: typeof prospect.motivo_resultado_id === 'string'
+                    ? prospect.motivo_resultado_id
+                    : (prospect.motivo_resultado_id?.id || ''),
                 observacao_resultado: prospect.observacao_resultado || ''
             });
         } else {
@@ -85,18 +95,115 @@ export default function ProspectsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const method = currentProspect ? 'PUT' : 'POST';
-        const url = currentProspect ? `/api/prospects/${currentProspect.id}` : '/api/prospects';
+        setIsSubmitting(true);
+        setSubmitError(null);
 
-        const res = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-        });
+        const method = currentProspect?.id ? 'PUT' : 'POST';
+        const url = currentProspect?.id ? `/api/prospects/${currentProspect.id}` : '/api/prospects';
 
-        if (res.ok) {
-            setIsModalOpen(false);
+        if (method === 'PUT' && (!currentProspect?.id || currentProspect.id === 'undefined')) {
+            setSubmitError('ID do prospect inválido. Tente recarregar a página.');
+            setIsSubmitting(false);
+            return;
+        }
+
+        console.log(`Enviando ${method} para ${url}:`, formData);
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData),
+            });
+
+            if (res.ok) {
+                setIsModalOpen(false);
+                fetchData();
+            } else {
+                const errorData = await res.json();
+                setSubmitError(errorData.error || 'Erro ao salvar informações');
+            }
+        } catch (err) {
+            setSubmitError('Erro de conexão. Tente novamente.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const [draggedProspect, setDraggedProspect] = useState<any>(null);
+    const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+
+    const handleDragStart = (e: React.DragEvent, prospect: any) => {
+        if (!prospect?.id) {
+            console.error('Tentativa de arrastar prospect sem ID:', prospect);
+            return;
+        }
+        setDraggedProspect(prospect);
+        // Usar dataTransfer como backup e para compatibilidade
+        e.dataTransfer.setData('prospectId', prospect.id);
+        e.dataTransfer.dropEffect = 'move';
+
+        // Efeito visual no card original
+        const target = e.currentTarget as HTMLElement;
+        setTimeout(() => {
+            target.style.opacity = '0.3';
+        }, 0);
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+        const target = e.currentTarget as HTMLElement;
+        target.style.opacity = '1';
+        // Não limpamos o draggedProspect aqui, deixamos o handleDrop resolver
+        // setDraggedProspect(null); // REMOVIDO para evitar race condition
+        setDragOverStatus(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent, status: string) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverStatus !== status) {
+            setDragOverStatus(status);
+        }
+    };
+
+    const handleDragLeave = () => {
+        // Opcional: só limpar se sair da área das colunas
+    };
+
+    const handleDrop = async (e: React.DragEvent, newStatus: string) => {
+        e.preventDefault();
+        const pId = e.dataTransfer.getData('prospectId');
+        const prospect = draggedProspect || prospects.find(p => p.id === pId);
+
+        setDragOverStatus(null);
+        setDraggedProspect(null);
+
+        if (!prospect || prospect.status === newStatus) return;
+
+        // ATUALIZAÇÃO AUTOMÁTICA (Sem modal, para todos os status)
+        const oldProspects = [...prospects];
+        setProspects(prev => prev.map(p =>
+            p.id === prospect.id ? { ...p, status: newStatus } : p
+        ));
+
+        try {
+            console.log('Enviando PUT automático:', newStatus, 'ID:', prospect.id);
+            const res = await fetch(`/api/prospects/${prospect.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus }),
+            });
+
+            if (!res.ok) {
+                throw new Error('Falha ao atualizar status');
+            }
+            // Recarrega para garantir sincronia total
             fetchData();
+        } catch (err) {
+            console.error(err);
+            // Rollback em caso de erro
+            setProspects(oldProspects);
+            alert('Erro ao atualizar status. Tente novamente.');
         }
     };
 
@@ -123,52 +230,102 @@ export default function ProspectsPage() {
                         <input
                             type="text"
                             placeholder="Buscar por nome, telefone ou cidade..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium text-slate-600"
                         />
                     </div>
                 </div>
 
-                {/* Lista de Prospects */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {loading ? (
-                        <div className="col-span-full py-20 flex justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div>
-                    ) : prospects.map((p) => (
-                        <div key={p.id} className="glass p-6 rounded-3xl space-y-4 relative group">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 font-black text-xl">
-                                        {p.nome.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-800 leading-none">{p.nome}</h3>
-                                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{p.status}</p>
+                {/* Kanban Board */}
+                <div className="flex-1 overflow-x-auto pb-8 min-h-[600px] scroll-smooth custom-scrollbar">
+                    <div className="flex gap-6 pb-4">
+                        {['novo', 'contatado', 'interessado', 'convertido', 'nao_interessado'].map((status) => (
+                            <div
+                                key={status}
+                                className="w-80 flex flex-col gap-4"
+                            >
+                                <div className="flex items-center justify-between px-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`w-3 h-3 rounded-full ${status === 'novo' ? 'bg-slate-400' :
+                                            status === 'contatado' ? 'bg-blue-400' :
+                                                status === 'interessado' ? 'bg-purple-400' :
+                                                    status === 'convertido' ? 'bg-green-400' :
+                                                        'bg-red-400'
+                                            }`} />
+                                        <h3 className="font-black text-slate-700 uppercase tracking-widest text-sm text-nowrap">
+                                            {status.replace('_', ' ')}
+                                        </h3>
+                                        <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-lg text-xs font-bold">
+                                            {filteredProspects.filter(p => p.status === status).length}
+                                        </span>
                                     </div>
                                 </div>
-                                <button
-                                    onClick={() => handleOpenModal(p)}
-                                    className="p-2 text-slate-400 hover:text-purple-600 transition-colors"
+
+                                <div
+                                    onDragOver={(e) => handleDragOver(e, status)}
+                                    onDrop={(e) => handleDrop(e, status)}
+                                    className={`flex flex-col gap-4 p-4 rounded-3xl border-2 border-dashed transition-all min-h-[550px] relative ${dragOverStatus === status
+                                        ? 'bg-purple-100 border-purple-400 scale-[1.01]'
+                                        : draggedProspect
+                                            ? 'bg-purple-50/50 border-purple-200'
+                                            : 'bg-slate-100/50 border-slate-200'
+                                        }`}
                                 >
-                                    <Edit2 size={20} />
-                                </button>
-                            </div>
+                                    <div className="absolute inset-0 z-0"></div> {/* Hit area helper */}
+                                    <div className="relative z-10 flex flex-col gap-4">
+                                        {filteredProspects.filter(p => p.status === status).map((p) => (
+                                            <div
+                                                key={p.id}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, p)}
+                                                onDragEnd={handleDragEnd}
+                                                onClick={() => handleOpenModal(p)}
+                                                className="glass p-5 rounded-2xl space-y-3 cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-all border-l-4 group shadow-sm hover:shadow-md bg-white"
+                                                style={{
+                                                    borderLeftColor:
+                                                        status === 'novo' ? '#94a3b8' :
+                                                            status === 'contatado' ? '#38bdf8' :
+                                                                status === 'interessado' ? '#818cf8' :
+                                                                    status === 'convertido' ? '#22c55e' :
+                                                                        '#ef4444'
+                                                }}
+                                            >
+                                                <div className="flex justify-between items-start">
+                                                    <h4 className="font-black text-slate-800 leading-tight group-hover:text-purple-600 transition-colors">{p.nome}</h4>
+                                                    <Edit2 size={14} className="text-slate-300 group-hover:text-slate-400" />
+                                                </div>
 
-                            <div className="space-y-2 text-slate-600 text-sm font-medium">
-                                <div className="flex items-center gap-2">
-                                    <Phone size={16} className="text-slate-400" /> {p.telefone || 'N/A'}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <MapPin size={16} className="text-slate-400" /> {p.cidade || 'N/A'}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Calendar size={16} className="text-slate-400" /> {new Date(p.data_prospeccao).toLocaleDateString()}
-                                </div>
-                            </div>
+                                                <div className="space-y-1.5 text-slate-500 text-xs font-bold">
+                                                    <div className="flex items-center gap-2">
+                                                        <Phone size={14} className="text-slate-300" /> {p.telefone || 'N/A'}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin size={14} className="text-slate-300" /> {p.cidade || 'N/A'}
+                                                    </div>
+                                                </div>
 
-                            <div className="pt-4 border-t border-slate-50">
-                                <StatusBadge status={p.status} />
+                                                {p.motivos_resultado && (
+                                                    <div className="pt-2">
+                                                        <span className="bg-white/50 text-[10px] px-2 py-0.5 rounded-md border border-slate-100 text-slate-400 italic">
+                                                            {p.motivos_resultado.descricao}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {filteredProspects.filter(p => p.status === status).length === 0 && (
+                                        <div className="flex flex-col items-center justify-center h-40 text-slate-300 gap-2 relative z-10">
+                                            <Users size={32} strokeWidth={1} />
+                                            <span className="text-xs font-bold italic">Vazio</span>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -244,7 +401,7 @@ export default function ProspectsPage() {
                                     >
                                         <option value="">Selecione um motivo...</option>
                                         {motivos.map((m: any) => (
-                                            <option key={m.id} value={m.id}>{m.motivos_resultado.descricao}</option>
+                                            <option key={m.id} value={m.id}>{m.descricao}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -260,19 +417,27 @@ export default function ProspectsPage() {
                                 />
                             </div>
 
+                            {submitError && (
+                                <div className="col-span-2 bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-bold animate-pulse">
+                                    ⚠️ {submitError}
+                                </div>
+                            )}
+
                             <div className="col-span-2 flex gap-4 pt-4 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     className="flex-1 py-4 bg-slate-100 text-slate-600 font-black rounded-2xl hover:bg-slate-200 transition-all"
+                                    disabled={isSubmitting}
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-2xl shadow-xl hover:opacity-90 transition-all transform hover:scale-[1.02]"
+                                    disabled={isSubmitting}
+                                    className="flex-[2] py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black rounded-2xl shadow-xl hover:opacity-90 transition-all transform hover:scale-[1.02] disabled:opacity-50"
                                 >
-                                    Salvar Alterações
+                                    {isSubmitting ? 'Salvando...' : 'Salvar Alterações'}
                                 </button>
                             </div>
                         </form>

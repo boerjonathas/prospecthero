@@ -55,6 +55,36 @@ export default function AdminDashboard() {
             });
     }, []);
 
+    const handleExport = () => {
+        if (!data) return;
+
+        let csv = 'Categoria,Quantidade\n';
+        funnelLabels.forEach((label, i) => {
+            csv += `${label.toUpperCase()},${funnelValues[i]}\n`;
+        });
+
+        csv += '\nMotivo de Perda,Leads\n';
+        const lossCounts: any = data.lossReasons.reduce((acc: any, curr: any) => {
+            const desc = curr.motivos_resultado?.descricao;
+            acc[desc] = (acc[desc] || 0) + 1;
+            return acc;
+        }, {});
+
+        Object.entries(lossCounts).forEach(([reason, count]) => {
+            csv += `"${reason}",${count}\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `relatorio_admin_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (loading) return <AppLayout><div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div></AppLayout>;
 
     if (error) return <AppLayout><div className="p-10 text-center"><p className="text-red-500 font-bold">{error}</p></div></AppLayout>;
@@ -94,7 +124,10 @@ export default function AdminDashboard() {
                         <Link href="/prospects" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-blue-600 font-bold text-sm hover:bg-blue-50">
                             <Filter size={18} /> Ver Todos Leads
                         </Link>
-                        <button className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm shadow-lg shadow-purple-200 hover:bg-purple-700">
+                        <button
+                            onClick={handleExport}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm shadow-lg shadow-purple-200 hover:bg-purple-700"
+                        >
                             <Download size={18} /> Exportar
                         </button>
                     </div>
