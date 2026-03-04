@@ -181,6 +181,7 @@ export default function ProspectsPage() {
         if (!prospect || prospect.status === newStatus) return;
 
         // ATUALIZAÇÃO AUTOMÁTICA (Sem modal, para todos os status)
+        console.log('Frontend: Iniciando Drop automático. ID:', prospect.id, 'Novo Status:', newStatus);
         const oldProspects = [...prospects];
         setProspects(prev => prev.map(p =>
             p.id === prospect.id ? { ...p, status: newStatus } : p
@@ -195,8 +196,11 @@ export default function ProspectsPage() {
             });
 
             if (!res.ok) {
+                const errorText = await res.text();
+                console.error('Frontend: Erro na resposta da API:', res.status, errorText);
                 throw new Error('Falha ao atualizar status');
             }
+            console.log('Frontend: Sincronização concluída para ID:', prospect.id);
             // Recarrega para garantir sincronia total
             fetchData();
         } catch (err) {

@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabaseServer';
 
 export async function PUT(
-    request: Request,
-    { params }: { params: { id: string } }
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
 ) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -12,8 +12,9 @@ export async function PUT(
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
+    console.log('API: Recebendo UPDATE para ID:', id, 'Corpo:', body);
     const {
         nome, email, telefone, cidade, sexo, status,
         motivo_resultado_id, observacao_resultado
@@ -47,8 +48,10 @@ export async function PUT(
         .single();
 
     if (error) {
+        console.error('API: Erro ao atualizar no Supabase:', error);
         return NextResponse.json({ error: error.message }, { status: 400 });
     }
+    console.log('API: Prospect atualizado com sucesso:', updatedProspect.id);
 
     // Gamificação na mudança de status
     if (status !== oldProspect.status) {
