@@ -11,7 +11,7 @@ import {
     Download,
     Calendar
 } from 'lucide-react';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Bar, Doughnut, Pie } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -65,12 +65,23 @@ export default function AdminDashboard() {
 
         csv += '\nMotivo de Perda,Leads\n';
         const lossCounts: any = data.lossReasons.reduce((acc: any, curr: any) => {
-            const desc = curr.motivos_resultado?.descricao;
+            const desc = curr.motivos_resultado?.descricao || 'Não informado';
             acc[desc] = (acc[desc] || 0) + 1;
             return acc;
         }, {});
 
         Object.entries(lossCounts).forEach(([reason, count]) => {
+            csv += `"${reason}",${count}\n`;
+        });
+
+        csv += '\nMotivo de Sucesso (Por que compraram?),Leads\n';
+        const successCounts: any = data.conversionReasons.reduce((acc: any, curr: any) => {
+            const desc = curr.motivos_resultado?.descricao || 'Não informado';
+            acc[desc] = (acc[desc] || 0) + 1;
+            return acc;
+        }, {});
+
+        Object.entries(successCounts).forEach(([reason, count]) => {
             csv += `"${reason}",${count}\n`;
         });
 
@@ -104,6 +115,61 @@ export default function AdminDashboard() {
                 label: 'Leads no Funil',
                 data: funnelValues,
                 backgroundColor: ['#94a3b8', '#38bdf8', '#818cf8', '#22c55e'],
+                borderRadius: 8,
+            },
+        ],
+    };
+
+    // Processar motivos de perda (Top 3)
+    const lossCounts: any = data.lossReasons.reduce((acc: any, curr: any) => {
+        const desc = curr.motivos_resultado?.descricao || 'Não informado';
+        acc[desc] = (acc[desc] || 0) + 1;
+        return acc;
+    }, {});
+
+    const sortedReasons = Object.entries(lossCounts)
+        .sort((a: any, b: any) => b[1] - a[1]);
+
+    const top3 = sortedReasons.slice(0, 3);
+    const others = sortedReasons.slice(3).reduce((acc: number, curr: any) => acc + curr[1], 0);
+
+    const lossLabels = top3.map(([label]) => label);
+    const lossValues = top3.map(([_, value]) => value);
+
+    if (others > 0) {
+        lossLabels.push('Outros');
+        lossValues.push(others);
+    }
+
+    const lossChartData = {
+        labels: lossLabels,
+        datasets: [
+            {
+                data: lossValues,
+                backgroundColor: ['#f43f5e', '#fb923c', '#fbbf24', '#94a3b8'],
+                borderWidth: 0,
+                hoverOffset: 10,
+            },
+        ],
+    };
+
+    // Processar motivos de sucesso (Conversão)
+    const succCounts: any = data.conversionReasons.reduce((acc: any, curr: any) => {
+        const desc = curr.motivos_resultado?.descricao || 'Não informado';
+        acc[desc] = (acc[desc] || 0) + 1;
+        return acc;
+    }, {});
+
+    const sortedSuccess = Object.entries(succCounts)
+        .sort((a: any, b: any) => b[1] - a[1]);
+
+    const successChartData = {
+        labels: sortedSuccess.map(([label]) => label),
+        datasets: [
+            {
+                label: 'Leads Convertidos',
+                data: sortedSuccess.map(([_, value]) => value),
+                backgroundColor: '#22c55e',
                 borderRadius: 8,
             },
         ],
@@ -172,26 +238,55 @@ export default function AdminDashboard() {
                     {/* Motivos de Perda */}
                     <div className="glass p-8 rounded-3xl card-gradient">
                         <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <PieChart className="text-pink-600" /> Por que estamos perdendo leads?
+                            <PieChart className="text-pink-600" /> Por que estamos perdendo leads? (Top 3)
                         </h3>
-                        <div className="space-y-4">
+                        <div className="h-72 flex items-center justify-center">
                             {data.lossReasons?.length > 0 ? (
-                                Object.entries(
-                                    data.lossReasons.reduce((acc: any, curr: any) => {
-                                        const desc = curr.motivos_resultado?.descricao;
-                                        acc[desc] = (acc[desc] || 0) + 1;
-                                        return acc;
-                                    }, {})
-                                ).map(([reason, count]: any) => (
-                                    <div key={reason} className="flex items-center justify-between bg-white/50 p-4 rounded-2xl border border-white/50">
-                                        <span className="font-bold text-slate-700">{reason}</span>
-                                        <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-black">{count} leads</span>
-                                    </div>
-                                ))
+                                <Pie
+                                    data={lossChartData}
+                                    options={{
+                                        maintainAspectRatio: false,
+                                        plugins: {
+                                            legend: {
+                                                position: 'bottom',
+                                                labels: {
+                                                    font: { weight: 'bold' as any, family: 'Inter' },
+                                                    padding: 20
+                                                }
+                                            }
+                                        }
+                                    }}
+                                />
                             ) : (
                                 <p className="text-slate-400 italic">Sem registros de perda no momento.</p>
                             )}
                         </div>
+                    </div>
+                </div>
+
+                {/* Motivos de Sucesso (Por que compraram?) */}
+                <div className="glass p-8 rounded-3xl">
+                    <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
+                        <BarChart3 className="text-green-600" /> Por que eles compraram? (Motivos de Sucesso)
+                    </h3>
+                    <div className="h-64">
+                        {data.conversionReasons?.length > 0 ? (
+                            <Bar
+                                data={successChartData}
+                                options={{
+                                    maintainAspectRatio: false,
+                                    plugins: { legend: { display: false } },
+                                    scales: {
+                                        y: { beginAtZero: true, grid: { display: false } },
+                                        x: { grid: { display: false } }
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <div className="h-full flex items-center justify-center text-slate-400 italic">
+                                Nenhuma conversão registrada ainda.
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

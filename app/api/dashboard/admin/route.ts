@@ -30,10 +30,17 @@ export async function GET(request: Request) {
         .select('motivos_resultado(descricao)')
         .eq('status', 'nao_interessado');
 
+    // Motivos de conversão (Geral)
+    const { data: conversionReasons } = await supabase
+        .from('prospects')
+        .select('motivos_resultado(descricao)')
+        .eq('status', 'convertido');
+
     return NextResponse.json({
         totalProspects: totalProspects || 0,
         funnelData: funnelData || [],
         leadsByVendedor: leadsByVendedor || [],
         lossReasons: lossReasons || [],
+        conversionReasons: conversionReasons || [],
     });
 }
