@@ -240,7 +240,7 @@ export default function VendedorDashboard() {
                     </div>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     <StatCard
                         title="Prospects Hoje"
                         value={metrics.day}
@@ -320,7 +320,7 @@ export default function VendedorDashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                     <div className="glass p-8 rounded-3xl lg:col-span-2">
                         <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                             <BarChart3 className="text-green-600" /> Por que você vende? (Sucesso)

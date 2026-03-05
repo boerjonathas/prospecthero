@@ -200,7 +200,7 @@ export default function AdminDashboard() {
                 </header>
 
                 {/* Resumo Rápido */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                     <div className="glass p-6 rounded-3xl">
                         <p className="text-slate-500 font-bold text-sm uppercase">Total de Leads</p>
                         <p className="text-4xl font-black text-slate-800">{data.totalProspects}</p>

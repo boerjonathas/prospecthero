@@ -268,11 +268,11 @@ export default function ProspectsPage() {
 
                 {/* Kanban Board */}
                 <div className="flex-1 overflow-x-auto pb-8 min-h-[600px] scroll-smooth custom-scrollbar">
-                    <div className="flex gap-6 pb-4">
+                    <div className="flex gap-4 pb-4">
                         {['novo', 'contatado', 'interessado', 'convertido', 'nao_interessado'].map((status) => (
                             <div
                                 key={status}
-                                className="w-80 flex flex-col gap-4"
+                                className="w-72 sm:w-80 flex flex-col gap-4 shrink-0"
                             >
                                 <div className="flex items-center justify-between px-2">
                                     <div className="flex items-center gap-2">

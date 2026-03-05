@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex bg-slate-50 min-h-screen">
             <Sidebar role={role} />
-            <main className="flex-1 p-8">
+            <main className="flex-1 p-4 sm:p-6 lg:p-8">
                 <div className="max-w-7xl mx-auto">
                     {children}
                 </div>
