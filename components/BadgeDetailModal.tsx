@@ -27,7 +27,7 @@ export default function BadgeDetailModal({ badge, isEarned, isOpen, onClose }: B
     };
 
     return (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-16 md:p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-slate-900/40 backdrop-blur-2xl animate-in fade-in duration-500"
@@ -35,7 +35,7 @@ export default function BadgeDetailModal({ badge, isEarned, isOpen, onClose }: B
             />
 
             {/* Modal Content - Absolute centering reinforced */}
-            <div className="relative w-full max-w-lg bg-white rounded-[4rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 fade-in duration-300 border border-white/20 flex flex-col items-center">
+            <div className="relative w-full h-full md:h-auto max-h-full overflow-y-auto max-w-lg bg-white rounded-[2rem] md:rounded-[4rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-in zoom-in-95 fade-in duration-300 border border-white/20 flex flex-col items-center custom-scroll">
                 {/* Close Button */}
                 <button
                     onClick={onClose}

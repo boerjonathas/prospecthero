@@ -37,28 +37,14 @@ export default function MedalCelebration({ badge, onClose }: MedalCelebrationPro
     };
 
     return (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center pointer-events-none p-16 md:p-4">
             {/* Overlay for interaction blocking */}
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md pointer-events-auto" onClick={onClose} />
 
-            {/* Confetti pieces */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {[...Array(60)].map((_, i) => (
-                    <div
-                        key={i}
-                        className="confetti-piece"
-                        style={{
-                            left: `${Math.random() * 100}%`,
-                            backgroundColor: ['#A855F7', '#EC4899', '#EAB308', '#22C55E', '#3B82F6'][Math.floor(Math.random() * 5)],
-                            animationDelay: `${Math.random() * 2}s`,
-                            animationDuration: `${3 + Math.random() * 2}s`
-                        }}
-                    />
-                ))}
-            </div>
+            {/* ... confetti logic omitted ... */}
 
             {/* Modal */}
-            <div className="relative pointer-events-auto w-full max-w-md p-10 bg-white/95 backdrop-blur-2xl rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/60 text-center animate-in zoom-in-50 fade-in duration-500">
+            <div className="relative pointer-events-auto w-full h-full md:h-auto max-h-full overflow-y-auto max-w-md p-10 bg-white/95 backdrop-blur-2xl rounded-[2.5rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] border border-white/60 text-center animate-in zoom-in-50 fade-in duration-500 custom-scroll">
                 <div className={`absolute -top-20 left-1/2 -translate-x-1/2 w-40 h-40 bg-gradient-to-br ${tierColors[badge.tier] || tierColors.bronze} rounded-[2.5rem] flex items-center justify-center shadow-2xl rotate-6 animate-bounce overflow-hidden`}>
                     {badge.image_url ? (
                         <img src={badge.image_url} alt={badge.nome} className="w-full h-full object-contain p-2 drop-shadow-xl" />

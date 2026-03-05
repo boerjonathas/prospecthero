@@ -35,7 +35,7 @@ export default function HeroDetailModal({ userId, isOpen, onClose }: HeroDetailM
     const progress = Math.min(100, ((profile?.pontos || 0) / nextLevelXP) * 100);
 
     return (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-16 md:p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300"
@@ -43,7 +43,7 @@ export default function HeroDetailModal({ userId, isOpen, onClose }: HeroDetailM
             />
 
             {/* Modal Content */}
-            <div className="relative w-full max-w-2xl bg-white rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden animate-in zoom-in-95 fade-in duration-300 outline-none border border-white/20">
+            <div className="relative w-full h-full md:h-auto max-h-full bg-white rounded-[2rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-y-auto animate-in zoom-in-95 fade-in duration-300 outline-none border border-white/20 custom-scroll">
                 {/* Close Button */}
                 <button
                     onClick={onClose}
