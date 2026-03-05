@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
+import { Menu } from 'lucide-react';
 import LevelUpCelebration from './LevelUpCelebration';
 import MedalCelebration from './MedalCelebration';
 
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [showLevelUp, setShowLevelUp] = useState(false);
     const [newLevel, setNewLevel] = useState(0);
     const [newMedal, setNewMedal] = useState<any>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -80,10 +82,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!role) return <>{children}</>;
 
     return (
-        <div className="flex bg-slate-50 min-h-screen">
-            <Sidebar role={role} />
-            <main className="flex-1 p-4 sm:p-6 lg:p-8">
-                <div className="max-w-7xl mx-auto">
+        <div className="flex bg-slate-50 min-h-screen relative">
+            <Sidebar
+                role={role}
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+            />
+
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 transition-all duration-300">
+                {/* Mobile/Laptop Hamburger Menu */}
+                <div className="mb-4 shrink-0 2xl:hidden">
+                    <button
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-3 bg-white shadow-sm rounded-xl border border-slate-200 text-slate-600 hover:text-purple-600 transition-all active:scale-95 flex items-center gap-2 font-bold text-sm"
+                    >
+                        <Menu size={20} />
+                        <span className="hidden sm:inline">Menu</span>
+                    </button>
+                </div>
+
+                <div className="max-w-[1600px] mx-auto">
                     {children}
                 </div>
             </main>
