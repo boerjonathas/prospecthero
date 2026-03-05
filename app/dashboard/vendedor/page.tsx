@@ -240,7 +240,7 @@ export default function VendedorDashboard() {
                     </div>
                 </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                     <StatCard
                         title="Prospects Hoje"
                         value={metrics.day}
