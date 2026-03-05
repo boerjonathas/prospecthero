@@ -240,39 +240,41 @@ export default function VendedorDashboard() {
                     </div>
                 </header>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 gap-6">
-                    <StatCard
-                        title="Prospects Hoje"
-                        value={metrics.day}
-                        subtitle={`Meta: ${profile?.meta_diaria || 10}`}
-                        progress={(metrics.day / (profile?.meta_diaria || 10)) * 100}
-                        icon={Clock}
-                        color="purple"
-                    />
-                    <StatCard
-                        title="Prospects Semana"
-                        value={metrics.week}
-                        subtitle={`Meta: ${profile?.meta_semanal || 50}`}
-                        progress={(metrics.week / (profile?.meta_semanal || 50)) * 100}
-                        icon={Target}
-                        color="pink"
-                    />
-                    <StatCard
-                        title="Meta Diária"
-                        value={profile?.meta_diaria || 10}
-                        subtitle="Foque no objetivo"
-                        progress={100}
-                        icon={Zap}
-                        color="yellow"
-                    />
-                    <StatCard
-                        title="Streak"
-                        value={`${profile?.streak || 0} dias`}
-                        subtitle={profile?.streak > 0 ? "Você está pegando fogo! 🔥" : "Comece sua sequência!"}
-                        progress={profile?.streak > 0 ? 100 : 0}
-                        icon={Flame}
-                        color="orange"
-                    />
+                <div className="w-full overflow-hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 gap-6">
+                        <StatCard
+                            title="Prospects Hoje"
+                            value={metrics.day}
+                            subtitle={`Meta: ${profile?.meta_diaria || 10}`}
+                            progress={(metrics.day / (profile?.meta_diaria || 10)) * 100}
+                            icon={Clock}
+                            color="purple"
+                        />
+                        <StatCard
+                            title="Prospects Semana"
+                            value={metrics.week}
+                            subtitle={`Meta: ${profile?.meta_semanal || 50}`}
+                            progress={(metrics.week / (profile?.meta_semanal || 50)) * 100}
+                            icon={Target}
+                            color="pink"
+                        />
+                        <StatCard
+                            title="Meta Diária"
+                            value={profile?.meta_diaria || 10}
+                            subtitle="Foque no objetivo"
+                            progress={100}
+                            icon={Zap}
+                            color="yellow"
+                        />
+                        <StatCard
+                            title="Streak"
+                            value={`${profile?.streak || 0} dias`}
+                            subtitle={profile?.streak > 0 ? "Você está pegando fogo! 🔥" : "Comece sua sequência!"}
+                            progress={profile?.streak > 0 ? 100 : 0}
+                            icon={Flame}
+                            color="orange"
+                        />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

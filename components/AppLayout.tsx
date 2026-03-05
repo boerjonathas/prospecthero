@@ -82,14 +82,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!role) return <>{children}</>;
 
     return (
-        <div className="flex bg-slate-50 min-h-screen relative overflow-x-clip">
+        <div className="flex bg-slate-50 min-h-screen relative overflow-x-hidden max-w-[100vw]">
             <Sidebar
                 role={role}
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
             />
 
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 transition-all duration-300">
+            <main className="flex-1 min-w-0 w-full p-4 sm:p-6 lg:p-8 transition-all duration-300 overflow-hidden">
                 {/* Mobile/Laptop Hamburger Menu */}
                 <div className="mb-4 shrink-0 2xl:hidden">
                     <button
