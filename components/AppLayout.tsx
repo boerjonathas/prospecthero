@@ -82,7 +82,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!role) return <>{children}</>;
 
     return (
-        <div className="flex bg-slate-50 min-h-screen relative">
+        <div className="flex bg-slate-50 min-h-screen relative overflow-x-clip">
             <Sidebar
                 role={role}
                 isOpen={isSidebarOpen}

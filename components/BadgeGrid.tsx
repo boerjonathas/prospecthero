@@ -20,7 +20,7 @@ export default function BadgeGrid({ earnedBadges = [], allBadges = [] }: { earne
     return (
         <div className="space-y-4">
             {/* Scrollable Container */}
-            <div className="flex flex-nowrap overflow-x-auto gap-5 pb-8 px-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent custom-scroll -mx-4 sm:-mx-0">
+            <div className="flex flex-nowrap overflow-x-auto gap-5 pb-8 px-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent custom-scroll">
                 {allBadges.map((badge) => {
                     const isEarned = earnedBadges.some(eb => eb.badge_id === badge.id);
                     const Icon = ICON_MAP[badge.icon] || Award;

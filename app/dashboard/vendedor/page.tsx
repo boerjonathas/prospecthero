@@ -320,8 +320,8 @@ export default function VendedorDashboard() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                    <div className="glass p-8 rounded-3xl lg:col-span-2">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="glass p-8 rounded-3xl lg:col-span-8">
                         <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                             <BarChart3 className="text-green-600" /> Por que você vende? (Sucesso)
                         </h3>
@@ -341,7 +341,7 @@ export default function VendedorDashboard() {
                         </div>
                     </div>
 
-                    <div className="glass p-8 rounded-3xl lg:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 border-none shadow-2xl">
+                    <div className="glass p-8 rounded-3xl lg:col-span-4 bg-gradient-to-br from-slate-800 to-slate-900 border-none shadow-2xl">
                         <h3 className="text-xl font-bold mb-4 text-white">Dica do Time 💡</h3>
                         <p className="text-slate-300 leading-relaxed mb-6">"Contatos rápidos têm <span className="text-purple-400 font-bold">9x mais chance</span> de avançar no funil."</p>
                         <div className="space-y-4">

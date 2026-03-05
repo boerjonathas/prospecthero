@@ -178,21 +178,21 @@ export default function AdminDashboard() {
     return (
         <AppLayout>
             <div className="space-y-8">
-                <header className="flex justify-between items-center">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-black text-slate-800">Pipeline Global 📊</h1>
                         <p className="text-slate-500 font-medium">Análise em tempo real de toda a operação.</p>
                     </div>
-                    <div className="flex gap-3">
-                        <Link href="/dashboard/admin/vendedores" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-purple-600 font-bold text-sm hover:bg-purple-50">
+                    <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                        <Link href="/dashboard/admin/vendedores" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-purple-600 font-bold text-sm hover:bg-purple-50 flex-1 sm:flex-none justify-center">
                             <Users size={18} /> Equipe
                         </Link>
-                        <Link href="/prospects" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-blue-600 font-bold text-sm hover:bg-blue-50">
+                        <Link href="/prospects" className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-blue-600 font-bold text-sm hover:bg-blue-50 flex-1 sm:flex-none justify-center">
                             <Filter size={18} /> Ver Todos Leads
                         </Link>
                         <button
                             onClick={handleExport}
-                            className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm shadow-lg shadow-purple-200 hover:bg-purple-700"
+                            className="bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm shadow-lg shadow-purple-200 hover:bg-purple-700 flex-1 sm:flex-none justify-center"
                         >
                             <Download size={18} /> Exportar
                         </button>
@@ -200,7 +200,7 @@ export default function AdminDashboard() {
                 </header>
 
                 {/* Resumo Rápido */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                     <div className="glass p-6 rounded-3xl">
                         <p className="text-slate-500 font-bold text-sm uppercase">Total de Leads</p>
                         <p className="text-4xl font-black text-slate-800">{data.totalProspects}</p>
