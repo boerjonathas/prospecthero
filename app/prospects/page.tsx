@@ -11,7 +11,8 @@ import {
     Calendar,
     Edit2,
     CheckCircle2,
-    XCircle
+    XCircle,
+    Trash2
 } from 'lucide-react';
 
 export default function ProspectsPage() {
@@ -23,6 +24,13 @@ export default function ProspectsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [visibleLimits, setVisibleLimits] = useState<Record<string, number>>({
+        novo: 5,
+        contatado: 5,
+        interessado: 5,
+        convertido: 5,
+        nao_interessado: 5
+    });
 
     // Form states
     const [formData, setFormData] = useState({
@@ -91,6 +99,23 @@ export default function ProspectsPage() {
             });
         }
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        if (!confirm('Tem certeza que deseja excluir este prospect? Esta ação não pode ser desfeita.')) return;
+
+        try {
+            const res = await fetch(`/api/prospects/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchData();
+            } else {
+                const errorData = await res.json();
+                alert(errorData.error || 'Erro ao excluir prospect');
+            }
+        } catch (err) {
+            alert('Erro de conexão ao excluir prospect');
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -278,46 +303,81 @@ export default function ProspectsPage() {
                                 >
                                     <div className="absolute inset-0 z-0"></div> {/* Hit area helper */}
                                     <div className="relative z-10 flex flex-col gap-4">
-                                        {filteredProspects.filter(p => p.status === status).map((p) => (
-                                            <div
-                                                key={p.id}
-                                                draggable
-                                                onDragStart={(e) => handleDragStart(e, p)}
-                                                onDragEnd={handleDragEnd}
-                                                onClick={() => handleOpenModal(p)}
-                                                className="glass p-5 rounded-2xl space-y-3 cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-all border-l-4 group shadow-sm hover:shadow-md bg-white"
-                                                style={{
-                                                    borderLeftColor:
-                                                        status === 'novo' ? '#94a3b8' :
-                                                            status === 'contatado' ? '#38bdf8' :
-                                                                status === 'interessado' ? '#818cf8' :
-                                                                    status === 'convertido' ? '#22c55e' :
-                                                                        '#ef4444'
-                                                }}
-                                            >
-                                                <div className="flex justify-between items-start">
-                                                    <h4 className="font-black text-slate-800 leading-tight group-hover:text-purple-600 transition-colors">{p.nome}</h4>
-                                                    <Edit2 size={14} className="text-slate-300 group-hover:text-slate-400" />
-                                                </div>
+                                        {filteredProspects
+                                            .filter(p => p.status === status)
+                                            .slice(0, visibleLimits[status])
+                                            .map((p) => (
+                                                <div
+                                                    key={p.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, p)}
+                                                    onDragEnd={handleDragEnd}
+                                                    onClick={() => handleOpenModal(p)}
+                                                    className="glass p-5 rounded-2xl space-y-3 cursor-grab active:cursor-grabbing hover:scale-[1.02] transition-all border-l-4 group shadow-sm hover:shadow-md bg-white"
+                                                    style={{
+                                                        borderLeftColor:
+                                                            status === 'novo' ? '#94a3b8' :
+                                                                status === 'contatado' ? '#38bdf8' :
+                                                                    status === 'interessado' ? '#818cf8' :
+                                                                        status === 'convertido' ? '#22c55e' :
+                                                                            '#ef4444'
+                                                    }}
+                                                >
+                                                    <div className="flex justify-between items-start">
+                                                        <h4 className="font-black text-slate-800 leading-tight group-hover:text-purple-600 transition-colors">{p.nome}</h4>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={(e) => handleDelete(e, p.id)}
+                                                                className="p-1 text-slate-300 hover:text-red-500 transition-all focus:outline-none"
+                                                                title="Excluir Prospect"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                            <Edit2 size={14} className="text-slate-300 group-hover:text-slate-400" />
+                                                        </div>
+                                                    </div>
 
-                                                <div className="space-y-1.5 text-slate-500 text-xs font-bold">
-                                                    <div className="flex items-center gap-2">
-                                                        <Phone size={14} className="text-slate-300" /> {p.telefone || 'N/A'}
+                                                    <div className="space-y-1.5 text-slate-500 text-xs font-bold">
+                                                        <div className="flex items-center gap-2">
+                                                            <Phone size={14} className="text-slate-300" /> {p.telefone || 'N/A'}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <MapPin size={14} className="text-slate-300" /> {p.cidade || 'N/A'}
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <MapPin size={14} className="text-slate-300" /> {p.cidade || 'N/A'}
-                                                    </div>
-                                                </div>
 
-                                                {p.motivos_resultado && (
-                                                    <div className="pt-2">
-                                                        <span className="bg-white/50 text-[10px] px-2 py-0.5 rounded-md border border-slate-100 text-slate-400 italic">
-                                                            {p.motivos_resultado.descricao}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                                    {p.motivos_resultado && (
+                                                        <div className="pt-2">
+                                                            <span className="bg-white/50 text-[10px] px-2 py-0.5 rounded-md border border-slate-100 text-slate-400 italic">
+                                                                {p.motivos_resultado.descricao}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+
+                                        <div className="flex flex-col gap-2 mt-2">
+                                            {filteredProspects.filter(p => p.status === status).length > visibleLimits[status] && (
+                                                <button
+                                                    onClick={() => setVisibleLimits(prev => ({ ...prev, [status]: prev[status] + 5 }))}
+                                                    className="w-full py-3 bg-white/50 hover:bg-white text-slate-500 text-[10px] font-black rounded-xl border border-dashed border-slate-200 transition-all hover:border-purple-300 hover:text-purple-600 group active:scale-95"
+                                                >
+                                                    VER MAIS +
+                                                    <span className="block text-[8px] opacity-50 group-hover:opacity-100">
+                                                        Mostrando {visibleLimits[status]} de {filteredProspects.filter(p => p.status === status).length}
+                                                    </span>
+                                                </button>
+                                            )}
+
+                                            {visibleLimits[status] > 5 && (
+                                                <button
+                                                    onClick={() => setVisibleLimits(prev => ({ ...prev, [status]: 5 }))}
+                                                    className="w-full py-2 text-slate-400 text-[9px] font-black hover:text-purple-500 transition-all uppercase tracking-tighter active:scale-95"
+                                                >
+                                                    — Ver menos —
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {filteredProspects.filter(p => p.status === status).length === 0 && (

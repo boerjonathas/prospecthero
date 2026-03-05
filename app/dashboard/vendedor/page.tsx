@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import {
-    Users,
     Target,
     Zap,
     Flame,
@@ -12,8 +11,10 @@ import {
     Download,
     BarChart3,
     PieChart,
+    Award,
 } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
+import BadgeGrid from '@/components/BadgeGrid';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -22,7 +23,9 @@ import {
     Title,
     Tooltip,
     Legend,
-    ArcElement
+    ArcElement,
+    PointElement,
+    LineElement,
 } from 'chart.js';
 
 ChartJS.register(
@@ -32,7 +35,9 @@ ChartJS.register(
     Title,
     Tooltip,
     Legend,
-    ArcElement
+    ArcElement,
+    PointElement,
+    LineElement
 );
 
 interface DashData {
@@ -43,6 +48,8 @@ interface DashData {
     };
     reasons: any[];
     funnelData: any[];
+    allBadges: any[];
+    earnedBadges: any[];
 }
 
 export default function VendedorDashboard() {
@@ -52,11 +59,9 @@ export default function VendedorDashboard() {
 
     useEffect(() => {
         fetch('/api/dashboard/vendedor')
-            .then(res => {
-                if (!res.ok) throw new Error('Falha ao carregar dados');
-                return res.json();
-            })
+            .then(res => res.json())
             .then(d => {
+                if (d.error) throw new Error(d.error);
                 setData(d);
                 setLoading(false);
             })
@@ -122,12 +127,10 @@ export default function VendedorDashboard() {
     };
 
     if (loading) return <AppLayout><div className="flex justify-center p-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div></div></AppLayout>;
-
     if (error) return <AppLayout><div className="p-10 text-center"><p className="text-red-500 font-bold">{error}</p></div></AppLayout>;
-
     if (!data) return null;
 
-    const { metrics, reasons = [] } = data;
+    const { metrics } = data;
     const profile = metrics.profile;
 
     // Funil
@@ -149,7 +152,7 @@ export default function VendedorDashboard() {
         ],
     };
 
-    // Processar motivos de perda (Top 3)
+    // Motivos de perda (Top 3)
     const lossCounts: any = data.reasons
         .filter((r: any) => r.motivos_resultado?.tipo === 'perda')
         .reduce((acc: any, curr: any) => {
@@ -182,7 +185,7 @@ export default function VendedorDashboard() {
         ],
     };
 
-    // Processar motivos de sucesso
+    // Motivos de sucesso
     const succCounts: any = data.reasons
         .filter((r: any) => r.motivos_resultado?.tipo === 'conversao')
         .reduce((acc: any, curr: any) => {
@@ -209,26 +212,34 @@ export default function VendedorDashboard() {
     return (
         <AppLayout>
             <div className="space-y-8">
-                <header className="flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-800">Olá, {profile?.nome || 'Herói'}! 👋</h1>
-                        <p className="text-slate-500 font-medium">Você está no nível {profile?.nivel || 1}. Continue assim!</p>
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex-1 w-full">
+                        <div className="flex items-center gap-3 mb-2">
+                            <h1 className="text-3xl font-black text-slate-800">Olá, {profile?.nome || 'Herói'}! 👋</h1>
+                            <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">
+                                Nível {profile?.nivel || 1}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex gap-4 items-center">
+                    <div className="flex flex-col sm:flex-row gap-4 items-center w-full md:w-auto">
                         <button
                             onClick={handleExport}
-                            className="glass px-4 py-2 rounded-xl flex items-center gap-2 text-slate-600 font-bold text-sm hover:bg-slate-50"
+                            className="h-14 px-6 rounded-2xl flex items-center gap-2 text-slate-600 font-bold text-sm bg-white border border-slate-200 hover:bg-slate-50 transition-all w-full sm:w-auto justify-center"
                         >
                             <Download size={18} /> Exportar
                         </button>
-                        <div className="glass px-6 py-2 rounded-2xl flex items-center gap-2">
-                            <Zap className="text-yellow-500 fill-yellow-500" size={24} />
-                            <span className="text-2xl font-black text-slate-800">{profile?.pontos || 0} Pts</span>
+                        <div className="h-14 px-6 rounded-2xl flex items-center gap-3 bg-white border border-slate-200 w-full sm:w-auto">
+                            <div className="bg-yellow-100 p-2 rounded-xl">
+                                <Zap className="text-yellow-500 fill-yellow-500" size={20} />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">Seus Pontos</span>
+                                <span className="text-xl font-black text-slate-800 leading-none">{profile?.pontos || 0}</span>
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Grid de Métricas */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard
                         title="Prospects Hoje"
@@ -247,25 +258,24 @@ export default function VendedorDashboard() {
                         color="pink"
                     />
                     <StatCard
-                        title="Sua Meta Diária"
+                        title="Meta Diária"
                         value={profile?.meta_diaria || 10}
-                        subtitle="Prospects por dia"
+                        subtitle="Foque no objetivo"
                         progress={100}
                         icon={Zap}
                         color="yellow"
                     />
                     <StatCard
-                        title="Streak Atual"
+                        title="Streak"
                         value={`${profile?.streak || 0} dias`}
-                        subtitle="Batendo metas"
-                        progress={100}
+                        subtitle={profile?.streak > 0 ? "Você está pegando fogo! 🔥" : "Comece sua sequência!"}
+                        progress={profile?.streak > 0 ? 100 : 0}
                         icon={Flame}
                         color="orange"
                     />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Funil do Vendedor */}
                     <div className="glass p-8 rounded-3xl">
                         <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
                             <BarChart3 className="text-purple-600" /> Seu Funil de Vendas
@@ -282,10 +292,9 @@ export default function VendedorDashboard() {
                         </div>
                     </div>
 
-                    {/* Motivos de Perda */}
                     <div className="glass p-8 rounded-3xl card-gradient">
                         <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                            <PieChart className="text-pink-600" /> Seus Principais Motivos de Perda
+                            <PieChart className="text-pink-600" /> Seus Motivos de Perda
                         </h3>
                         <div className="h-72 flex items-center justify-center">
                             {lossValues.length > 0 ? (
@@ -311,11 +320,10 @@ export default function VendedorDashboard() {
                     </div>
                 </div>
 
-                {/* Motivos de Sucesso */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="glass p-8 rounded-3xl lg:col-span-2">
                         <h3 className="text-xl font-bold mb-8 flex items-center gap-2">
-                            <BarChart3 className="text-green-600" /> Por que você está vendendo? (Sucesso)
+                            <BarChart3 className="text-green-600" /> Por que você vende? (Sucesso)
                         </h3>
                         <div className="h-64">
                             {sortedSuccess.length > 0 ? (
@@ -324,32 +332,25 @@ export default function VendedorDashboard() {
                                     options={{
                                         maintainAspectRatio: false,
                                         plugins: { legend: { display: false } },
-                                        scales: {
-                                            y: { beginAtZero: true, grid: { display: false } },
-                                            x: { grid: { display: false } }
-                                        }
+                                        scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } }
                                     }}
                                 />
                             ) : (
-                                <div className="h-full flex items-center justify-center text-slate-400 italic">
-                                    Nenhuma conversão registrada ainda.
-                                </div>
+                                <div className="h-full flex items-center justify-center text-slate-400 italic">Nenhuma conversão registrada ainda.</div>
                             )}
                         </div>
                     </div>
 
                     <div className="glass p-8 rounded-3xl lg:col-span-1 bg-gradient-to-br from-slate-800 to-slate-900 border-none shadow-2xl">
                         <h3 className="text-xl font-bold mb-4 text-white">Dica do Time 💡</h3>
-                        <p className="text-slate-300 leading-relaxed mb-6">
-                            "Leads que recebem contato em menos de 5 minutos têm <span className="text-purple-400 font-bold">9x mais chance</span> de avançar no funil."
-                        </p>
+                        <p className="text-slate-300 leading-relaxed mb-6">"Contatos rápidos têm <span className="text-purple-400 font-bold">9x mais chance</span> de avançar no funil."</p>
                         <div className="space-y-4">
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                <p className="text-sm font-bold text-slate-400 mb-1 leading-none">Total Seu</p>
+                                <p className="text-sm font-bold text-slate-400 mb-1">Total Seu</p>
                                 <p className="text-3xl font-black text-white">{data.reasons.length}</p>
                             </div>
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                <p className="text-sm font-bold text-slate-400 mb-1 leading-none">Taxa de Conversão</p>
+                                <p className="text-sm font-bold text-slate-400 mb-1">Taxa de Conversão</p>
                                 <p className="text-3xl font-black text-green-400">
                                     {data.reasons.length > 0 ? ((sortedSuccess.reduce((acc: number, curr: any) => acc + curr[1], 0) / data.reasons.length) * 100).toFixed(1) : 0}%
                                 </p>
@@ -357,8 +358,16 @@ export default function VendedorDashboard() {
                         </div>
                     </div>
                 </div>
-            </div>
-        </AppLayout>
+
+                <div className="glass p-8 rounded-3xl">
+                    <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-xl font-bold flex items-center gap-2"><Award className="text-yellow-600" /> Suas Conquistas</h3>
+                        <span className="text-sm font-bold text-slate-400">{data.earnedBadges.length} de {data.allBadges.length} medalhas</span>
+                    </div>
+                    <BadgeGrid allBadges={data.allBadges} earnedBadges={data.earnedBadges} />
+                </div>
+            </div >
+        </AppLayout >
     );
 }
 
@@ -369,7 +378,6 @@ function StatCard({ title, value, subtitle, progress, icon: Icon, color }: any) 
         yellow: 'bg-yellow-100 text-yellow-600',
         orange: 'bg-orange-100 text-orange-600',
     };
-
     const progressColors: any = {
         purple: 'bg-purple-500',
         pink: 'bg-pink-500',
@@ -379,21 +387,14 @@ function StatCard({ title, value, subtitle, progress, icon: Icon, color }: any) 
 
     return (
         <div className="glass p-6 rounded-3xl flex flex-col gap-4">
-            <div className="flex justify-between items-start">
-                <div className={`p-3 rounded-2xl ${colors[color]}`}>
-                    <Icon size={24} />
-                </div>
-            </div>
+            <div className={`p-3 rounded-2xl w-fit ${colors[color]}`}><Icon size={24} /></div>
             <div>
                 <p className="text-slate-500 font-bold text-sm uppercase tracking-wider">{title}</p>
                 <p className="text-3xl font-black text-slate-800">{value}</p>
             </div>
             <div className="space-y-2 mt-2">
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                        className={`h-full ${progressColors[color]} transition-all duration-1000`}
-                        style={{ width: `${Math.min(progress, 100)}%` }}
-                    />
+                    <div className={`h-full ${progressColors[color]} transition-all duration-1000`} style={{ width: `${Math.min(progress, 100)}%` }} />
                 </div>
                 <p className="text-xs font-bold text-slate-400">{subtitle}</p>
             </div>

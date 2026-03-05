@@ -234,7 +234,25 @@ export default function VendedoresPage() {
                                                 {v.pontos} Pts
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="p-2 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100">
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm(`Tem certeza que deseja excluir o vendedor ${v.nome}? Todos os seus prospects e dados também serão removidos.`)) {
+                                                            try {
+                                                                const res = await fetch(`/api/dashboard/admin/vendedores/${v.id}`, { method: 'DELETE' });
+                                                                if (res.ok) {
+                                                                    setMessage({ text: 'Vendedor excluído com sucesso!', type: 'success' });
+                                                                    fetchVendedores();
+                                                                } else {
+                                                                    const d = await res.json();
+                                                                    setMessage({ text: d.error || 'Erro ao excluir vendedor', type: 'error' });
+                                                                }
+                                                            } catch (err) {
+                                                                setMessage({ text: 'Erro de conexão ao excluir', type: 'error' });
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                                >
                                                     <Trash2 size={18} />
                                                 </button>
                                             </td>

@@ -60,7 +60,9 @@ CREATE TABLE badges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome TEXT NOT NULL,
     descricao TEXT,
-    icon_url TEXT,
+    icon TEXT,
+    image_url TEXT,
+    tier TEXT DEFAULT 'bronze' CHECK (tier IN ('bronze', 'prata', 'ouro', 'roxo', 'vermelho')),
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

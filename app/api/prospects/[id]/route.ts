@@ -64,3 +64,46 @@ export async function PUT(
 
     return NextResponse.json({ data: updatedProspect });
 }
+
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    // Verificar se o prospect pertence ao vendedor ou se é admin
+    const { data: prospect, error: fetchError } = await supabase
+        .from('prospects')
+        .select('vendedor_id')
+        .eq('id', id)
+        .single();
+
+    if (fetchError || !prospect) {
+        return NextResponse.json({ error: 'Prospect not found' }, { status: 404 });
+    }
+
+    // Apenas o dono ou admin pode deletar (assumindo que profiles tem role)
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+
+    if (prospect.vendedor_id !== user.id && profile?.role !== 'admin') {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { error: deleteError } = await supabase
+        .from('prospects')
+        .delete()
+        .eq('id', id);
+
+    if (deleteError) {
+        return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ message: 'Prospect deleted successfully' });
+}

@@ -40,6 +40,10 @@ export async function GET(request: Request) {
     // Funil do vendedor
     const { data: funnelData } = await supabase.rpc('get_vendedor_funnel_stats', { vendedor_uuid: user.id });
 
+    // Badges e Conquistas
+    const { data: allBadges } = await supabase.from('badges').select('*').order('data_criacao', { ascending: true });
+    const { data: earnedBadges } = await supabase.from('user_badges').select('*').eq('user_id', user.id);
+
     const profileData = profile || {
         id: user.id,
         nome: user.user_metadata?.nome || 'Herói',
@@ -59,5 +63,7 @@ export async function GET(request: Request) {
         },
         reasons: reasons || [],
         funnelData: funnelData || [],
+        allBadges: allBadges || [],
+        earnedBadges: earnedBadges || [],
     });
 }
