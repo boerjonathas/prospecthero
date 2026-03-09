@@ -24,6 +24,9 @@ CREATE TABLE profiles (
     meta_semanal INTEGER DEFAULT 50,
     nivel INTEGER DEFAULT 1,
     pontos INTEGER DEFAULT 0,
+    streak INTEGER DEFAULT 0,
+    ultima_prospeccao DATE,
+    ultima_meta_batida DATE,
     role TEXT NOT NULL DEFAULT 'vendedor' CHECK (role IN ('admin', 'vendedor')),
     data_criacao TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -115,6 +118,171 @@ BEGIN
     VALUES (user_id, amount, reason);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger Function for Points, Level and Streak
+CREATE OR REPLACE FUNCTION fn_trigger_calculate_points()
+RETURNS trigger 
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    pts_to_add INTEGER := 0;
+    motivo_pts TEXT := '';
+    v_meta_diaria INTEGER;
+    v_streak INTEGER;
+    v_ultima_meta_batida DATE;
+    v_count_today INTEGER;
+BEGIN
+    -- AÇÕES DE INSERÇÃO (Novo Prospect)
+    IF (TG_OP = 'INSERT') THEN
+        pts_to_add := 1; -- Cadastro base
+        motivo_pts := 'Novo prospect cadastrado';
+
+        -- Bônus de Campos Completos (Nome, Telefone, Email, Cidade)
+        IF (NEW.nome IS NOT NULL AND NEW.telefone IS NOT NULL AND NEW.email IS NOT NULL AND NEW.cidade IS NOT NULL) THEN
+            pts_to_add := pts_to_add + 1;
+            motivo_pts := motivo_pts || ' + Bônus de Perfil Completado';
+        END IF;
+
+    -- AÇÕES DE ATUALIZAÇÃO (Mudança de Status ou Dados)
+    ELSIF (TG_OP = 'UPDATE') THEN
+        -- Mudança de Status
+        IF (OLD.status <> NEW.status) THEN
+            CASE NEW.status
+                WHEN 'contatado' THEN 
+                    pts_to_add := 1;
+                    motivo_pts := 'Status atualizado para Contatado';
+                WHEN 'interessado' THEN 
+                    pts_to_add := 3;
+                    motivo_pts := 'Status atualizado para Interessado';
+                WHEN 'convertido' THEN 
+                    pts_to_add := 10;
+                    motivo_pts := 'Venda realizada (+10 pts!)';
+                ELSE pts_to_add := 0;
+            END CASE;
+        END IF;
+
+        -- Registro de Motivo
+        IF (OLD.motivo_resultado_id IS NULL AND NEW.motivo_resultado_id IS NOT NULL) THEN
+            IF (NEW.status = 'convertido') THEN
+                pts_to_add := pts_to_add + 3;
+                motivo_pts := motivo_pts || ' + Inteligência de Conversão';
+            ELSIF (NEW.status = 'nao_interessado') THEN
+                pts_to_add := pts_to_add + 2;
+                motivo_pts := motivo_pts || ' + Inteligência de Perda';
+            END IF;
+        END IF;
+
+        -- Observação Detalhada
+        IF (OLD.observacao_resultado IS NULL AND NEW.observacao_resultado IS NOT NULL AND LENGTH(NEW.observacao_resultado) > 10) THEN
+            pts_to_add := pts_to_add + 1;
+            motivo_pts := motivo_pts || ' + Detalhamento Comercial';
+        END IF;
+    END IF;
+
+    -- Executar Incremento
+    IF (pts_to_add > 0) THEN
+        PERFORM increment_points(NEW.vendedor_id, pts_to_add, motivo_pts);
+
+        -- ATUALIZAÇÃO DE NÍVEL
+        UPDATE profiles 
+        SET nivel = CASE 
+            WHEN pontos <= 100 THEN 1
+            WHEN pontos <= 300 THEN 2
+            WHEN pontos <= 600 THEN 3
+            WHEN pontos <= 1000 THEN 4
+            ELSE 5
+        END
+        WHERE id = NEW.vendedor_id;
+    END IF;
+
+    -- LÓGICA DE STREAK
+    SELECT meta_diaria, streak, ultima_meta_batida 
+    INTO v_meta_diaria, v_streak, v_ultima_meta_batida
+    FROM profiles WHERE id = NEW.vendedor_id;
+
+    UPDATE profiles SET ultima_prospeccao = CURRENT_DATE WHERE id = NEW.vendedor_id;
+
+    SELECT count(*)::int INTO v_count_today
+    FROM prospects
+    WHERE vendedor_id = NEW.vendedor_id 
+    AND data_prospeccao::date = CURRENT_DATE;
+
+    IF v_count_today >= v_meta_diaria AND (v_ultima_meta_batida IS NULL OR v_ultima_meta_batida < CURRENT_DATE) THEN
+        IF v_ultima_meta_batida = CURRENT_DATE - INTERVAL '1 day' THEN
+            UPDATE profiles SET streak = streak + 1, ultima_meta_batida = CURRENT_DATE WHERE id = NEW.vendedor_id;
+        ELSE
+            UPDATE profiles SET streak = 1, ultima_meta_batida = CURRENT_DATE WHERE id = NEW.vendedor_id;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger para Pontos e Streak
+DROP TRIGGER IF EXISTS trg_calculate_points ON prospects;
+CREATE TRIGGER trg_calculate_points
+AFTER INSERT OR UPDATE ON prospects
+FOR EACH ROW EXECUTE PROCEDURE fn_trigger_calculate_points();
+
+-- Badge Awarding Logic
+CREATE OR REPLACE FUNCTION check_and_award_badges()
+RETURNS trigger AS $$
+DECLARE
+    v_user_id UUID;
+    v_prospects_count INTEGER;
+    v_conversion_count INTEGER;
+    v_streak INTEGER;
+    v_reasons_count INTEGER;
+    v_badge RECORD;
+    v_meta_val INTEGER;
+    v_meta_type TEXT;
+BEGIN
+    IF (TG_TABLE_NAME = 'prospects') THEN
+        v_user_id := NEW.vendedor_id;
+    ELSIF (TG_TABLE_NAME = 'profiles') THEN
+        v_user_id := NEW.id;
+    END IF;
+
+    IF v_user_id IS NULL THEN RETURN NEW; END IF;
+
+    SELECT COUNT(*)::int INTO v_prospects_count FROM prospects WHERE vendedor_id = v_user_id;
+    SELECT COUNT(*)::int INTO v_conversion_count FROM prospects WHERE vendedor_id = v_user_id AND status = 'convertido';
+    SELECT streak INTO v_streak FROM profiles WHERE id = v_user_id;
+    SELECT COUNT(*)::int INTO v_reasons_count FROM prospects WHERE vendedor_id = v_user_id AND motivo_resultado_id IS NOT NULL;
+
+    FOR v_badge IN SELECT * FROM badges LOOP
+        v_meta_type := v_badge.meta_json->>'type';
+        v_meta_val := (v_badge.meta_json->>'val')::int;
+
+        IF (
+            (v_meta_type = 'prospects_count' AND v_prospects_count >= v_meta_val) OR
+            (v_meta_type = 'conversion_count' AND v_conversion_count >= v_meta_val) OR
+            (v_meta_type = 'streak' AND v_streak >= v_meta_val) OR
+            (v_meta_type = 'reasons_count' AND v_reasons_count >= v_meta_val)
+        ) THEN
+            INSERT INTO user_badges (user_id, badge_id)
+            SELECT v_user_id, v_badge.id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM user_badges WHERE user_id = v_user_id AND badge_id = v_badge.id
+            );
+        END IF;
+    END LOOP;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Triggers para Medalhas
+DROP TRIGGER IF EXISTS trg_award_badges_prospects ON prospects;
+CREATE TRIGGER trg_award_badges_prospects
+AFTER INSERT OR UPDATE ON prospects
+FOR EACH ROW EXECUTE PROCEDURE check_and_award_badges();
+
+DROP TRIGGER IF EXISTS trg_award_badges_profiles ON profiles;
+CREATE TRIGGER trg_award_badges_profiles
+AFTER UPDATE OF streak ON profiles
+FOR EACH ROW EXECUTE PROCEDURE check_and_award_badges();
 
 -- Get Funnel Stats Function
 CREATE OR REPLACE FUNCTION get_funnel_stats()
